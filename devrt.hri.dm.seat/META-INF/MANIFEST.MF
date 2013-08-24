@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: SEAT
+Bundle-SymbolicName: SEAT;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Require-Bundle: org.codehaus.groovy;bundle-version="2.0.7",
+ jp.go.aist.rtm;bundle-version="1.1.0"
+Bundle-ClassPath: .,
+ lib/nekohtml.jar,
+ lib/xercesImpl-2.10.0.jar
+Bundle-Vendor: MID
+Bundle-ActivationPolicy: lazy

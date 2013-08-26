@@ -11,10 +11,18 @@ import jp.go.aist.rtm.RTC.port.OutPort
 import jp.go.aist.rtm.RTC.port.ConnectorBase.ConnectorInfo
 
 import org.omg.CORBA.portable.OutputStream
+import org.xml.sax.SAXException
 
 import RTC.*
 
+import javax.xml.XMLConstants
+import javax.xml.transform.stream.StreamSource
+import javax.xml.validation.SchemaFactory
+
 import org.cyberneko.html.parsers.SAXParser
+
+import org.eclipse.ui.PlatformUI
+import org.eclipse.jface.dialogs.MessageDialog
 
 /*
  * SEAT (yet another SEAT compatible state transition engine)
@@ -37,6 +45,8 @@ public class SEAT extends DataFlowComponentBase {
   
   def _scriptfile
   def _scorelimit
+  
+  def _validator
 
   public SEAT(Manager manager) {
     super(manager)
@@ -53,12 +63,33 @@ public class SEAT extends DataFlowComponentBase {
   public ReturnCode_t onInitialize() {
     bindParameter("scriptfile", _scriptfile, "none")
     bindParameter("scorelimit", _scorelimit, "0.0")
-    return super.onInitialize();
+    def factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI)
+    def schema = factory.newSchema(getClass().getResourceAsStream("/xsd/seatml.xsd"))
+    _validator = schema.newValidator()
+    return super.onInitialize()
   }
 
   // The activated action (Active state entry action)
   @Override
   public ReturnCode_t onActivated(int ec_id) {
+      URL scripturl = new URL(_scriptfile)
+      BufferedReader reader = new BufferedReader(new InputStreamReader(scripturl.openStream()))
+      StringWriter writer = new StringWriter()
+      def line
+      while((line = reader.readLine()) != null) {
+        writer.write(line)
+      }
+      reader.close()
+      def scriptdata = reader.toString()
+
+      try {
+        _validator.validate(new StreamSource(new StringReader(scriptdata)))
+      } catch (SAXException e) {
+        def shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell()
+        MessageDialog.openError(shell, "Error", e.getLocalizedMessage())
+        return ReturnCode_t.RTC_ERROR
+      }
+
       def parser = new XmlSlurper(new SAXParser())
       def doc = parser.parse(_scriptfile)
       _agents = doc.general.agent.collect {
@@ -69,13 +100,13 @@ public class SEAT extends DataFlowComponentBase {
           new MapEntry(it.@name.text(), [it.@type.text(), it.@datatype.text()])
         })
       }
-      return super.onActivated(ec_id);
+      return super.onActivated(ec_id)
   }
   
   // The execution action that is invoked periodically
   @Override
   public ReturnCode_t onExecute(int ec_id) {
-    return super.onExecute(ec_id);
+    return super.onExecute(ec_id)
   }
 
   def createInPort(String name, Class type) {
@@ -106,12 +137,12 @@ public class SEAT extends DataFlowComponentBase {
     }
   }
   
-  class Listener extends ConnectorDataListener{
+  class Listener extends ConnectorDataListener {
     def m_name
     def m_type
     def m_rtc
 
-    public Listener(def name, def type, def rtc){
+    public Listener(def name, def type, def rtc) {
       m_name = name
       m_type = type
       m_rtc = rtc
